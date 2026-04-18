@@ -3,6 +3,8 @@ import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { signUpWithPassword } from "../api/signup";
+import { useAuthSession } from "../hooks/useAuthSession";
+import { getRefreshTokenFromCookie } from "../lib/authCookies";
 import { PasswordRequirements } from "../components/PasswordRequirements";
 import { TasklyLogo } from "../components/TasklyLogo";
 import {
@@ -19,6 +21,7 @@ function fieldErrorRing(hasError: boolean): string {
 
 export function SignUpPage() {
   const navigate = useNavigate();
+  const { syncFromCookies } = useAuthSession();
   const [rootError, setRootError] = useState<string | null>(null);
 
   const {
@@ -57,7 +60,10 @@ export function SignUpPage() {
           ...(job.length > 0 ? { job_title: job } : {}),
         },
       });
-      navigate("/", { replace: true });
+      syncFromCookies();
+      navigate(getRefreshTokenFromCookie() ? "/dashboard" : "/login", {
+        replace: true,
+      });
     } catch (e) {
       const message = e instanceof Error ? e.message : "Sign up failed.";
       setRootError(message);

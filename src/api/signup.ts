@@ -1,5 +1,7 @@
+import type { StoredAuthUser } from "../lib/authCookies";
+import { persistAuthCookies } from "../lib/authCookies";
 import { getSupabaseAnonKey, getSupabaseUrl } from "../lib/env";
-import { persistSession } from "../lib/session";
+import { getJwtSubject } from "../lib/jwt";
 
 export type SignUpRequestBody = {
   email: string;
@@ -13,7 +15,7 @@ export type SignUpRequestBody = {
 export type SignUpSuccess = {
   access_token?: string;
   refresh_token?: string;
-  user?: { id: string; email?: string };
+  user?: StoredAuthUser;
   session?: {
     access_token?: string;
     refresh_token?: string;
@@ -56,6 +58,21 @@ function humanizeApiError(raw: string): string {
   return raw;
 }
 
+function userFromSignUpResponse(
+  success: SignUpSuccess,
+  accessToken: string,
+): StoredAuthUser {
+  const u = success.user;
+  if (u && typeof u.id === "string" && u.id.length > 0) {
+    return u;
+  }
+  const sub = getJwtSubject(accessToken);
+  return {
+    id: sub ?? "",
+    email: u && typeof u.email === "string" ? u.email : undefined,
+  };
+}
+
 export async function signUpWithPassword(
   body: SignUpRequestBody,
 ): Promise<SignUpSuccess> {
@@ -79,7 +96,13 @@ export async function signUpWithPassword(
   const access = success.access_token ?? success.session?.access_token;
   const refresh = success.refresh_token ?? success.session?.refresh_token;
   if (typeof access === "string" && typeof refresh === "string") {
-    persistSession({ access_token: access, refresh_token: refresh });
+    const user = userFromSignUpResponse(success, access);
+    if (user.id) {
+      persistAuthCookies(
+        { access_token: access, refresh_token: refresh, user },
+        false,
+      );
+    }
   }
 
   return success;
