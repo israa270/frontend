@@ -4,6 +4,7 @@ import { RequireAuth } from "./components/RequireAuth";
 import { AppShell } from "./components/layout/AppShell";
 import { DashboardHomePage } from "./pages/dashboard/DashboardHomePage";
 import { ShellPlaceholderPage } from "./pages/dashboard/ShellPlaceholderPage";
+import { AddProjectPage } from "./pages/project/AddProjectPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
@@ -21,30 +22,34 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route
-          path="/dashboard"
           element={
             <RequireAuth>
               <AppShell />
             </RequireAuth>
           }
         >
-          <Route index element={<DashboardHomePage />} />
-          <Route
-            path="epics"
-            element={<ShellPlaceholderPage title="Project Epics" />}
-          />
-          <Route
-            path="tasks"
-            element={<ShellPlaceholderPage title="Project Tasks" />}
-          />
-          <Route
-            path="members"
-            element={<ShellPlaceholderPage title="Project Members" />}
-          />
-          <Route
-            path="details"
-            element={<ShellPlaceholderPage title="Project Details" />}
-          />
+          <Route path="dashboard">
+            <Route index element={<DashboardHomePage />} />
+            <Route
+              path="epics"
+              element={<ShellPlaceholderPage title="Project Epics" />}
+            />
+            <Route
+              path="tasks"
+              element={<ShellPlaceholderPage title="Project Tasks" />}
+            />
+            <Route
+              path="members"
+              element={<ShellPlaceholderPage title="Project Members" />}
+            />
+            <Route
+              path="details"
+              element={<ShellPlaceholderPage title="Project Details" />}
+            />
+          </Route>
+          <Route path="project">
+            <Route path="add" element={<AddProjectPage />} />
+          </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
