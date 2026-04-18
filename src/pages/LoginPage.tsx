@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { loginWithPassword } from "../api/login";
 import { useAuthSession } from "../hooks/useAuthSession";
 import { useAppDispatch } from "../store/hooks";
@@ -23,8 +23,16 @@ function fieldErrorRing(hasError: boolean): string {
 export function LoginPage() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, isHydrated, syncFromCookies } = useAuthSession();
   const [rootError, setRootError] = useState<string | null>(null);
+
+  const logoutNotice =
+    location.state &&
+    typeof location.state === "object" &&
+    "logoutError" in location.state
+      ? String((location.state as { logoutError: unknown }).logoutError)
+      : null;
 
   const {
     register,
@@ -88,6 +96,14 @@ export function LoginPage() {
           </div>
 
           <form className="flex flex-col gap-6" onSubmit={onSubmit} noValidate>
+            {logoutNotice ? (
+              <div
+                role="alert"
+                className="rounded-lg bg-surface-error px-4 py-3 text-sm text-error"
+              >
+                {logoutNotice}
+              </div>
+            ) : null}
             {rootError ? (
               <div
                 role="alert"

@@ -1,7 +1,8 @@
+import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuthSession } from "../../hooks/useAuthSession";
+import { runFullLogout } from "../../lib/runFullLogout";
 import { useAppDispatch } from "../../store/hooks";
-import { clearUserProfile } from "../../store/slices/userSlice";
 import { TasklyLogo } from "../TasklyLogo";
 
 const navClass = ({
@@ -50,17 +51,25 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { signOut } = useAuthSession();
+  const { signOut, getAccessToken } = useAuthSession();
+  const [logoutBusy, setLogoutBusy] = useState(false);
 
   const linkClick = () => {
     onNavigate?.();
   };
 
   const handleLogout = () => {
+    if (logoutBusy) return;
     onNavigate?.();
-    dispatch(clearUserProfile());
-    signOut();
-    navigate("/login", { replace: true });
+    setLogoutBusy(true);
+    void runFullLogout({
+      getAccessToken,
+      dispatch,
+      signOut,
+      navigate,
+    }).finally(() => {
+      setLogoutBusy(false);
+    });
   };
 
   return (
@@ -111,13 +120,16 @@ export function AppSidebar({
         <button
           type="button"
           onClick={handleLogout}
+          disabled={logoutBusy}
           title={collapsed ? "Logout" : undefined}
-          className={`flex w-full items-center gap-3 rounded-lg py-2.5 text-sm font-medium text-error hover:bg-red-50 ${collapsed ? "justify-center px-2" : "px-3"}`}
+          className={`flex w-full items-center gap-3 rounded-lg py-2.5 text-sm font-medium text-error hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 ${collapsed ? "justify-center px-2" : "px-3"}`}
         >
           <span className="icon-material text-[22px]" aria-hidden>
             logout
           </span>
-          {!collapsed ? <span>Logout</span> : null}
+          {!collapsed ? (
+            <span>{logoutBusy ? "Logging out…" : "Logout"}</span>
+          ) : null}
         </button>
       </div>
     </div>
