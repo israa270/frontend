@@ -2,13 +2,20 @@ import { Link } from "react-router-dom";
 
 type TasklyLogoProps = {
   className?: string;
+  /** Hide wordmark (sidebar collapsed). */
+  compact?: boolean;
+  to?: string;
 };
 
-export function TasklyLogo({ className = "" }: TasklyLogoProps) {
+export function TasklyLogo({
+  className = "",
+  compact = false,
+  to = "/",
+}: TasklyLogoProps) {
   return (
     <Link
-      to="/"
-      className={`inline-flex items-center gap-2.5 no-underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${className}`}
+      to={to}
+      className={`inline-flex items-center justify-center gap-2.5 no-underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${compact ? "px-0" : ""} ${className}`}
       aria-label="TASKLY home"
     >
       <svg
@@ -33,9 +40,11 @@ export function TasklyLogo({ className = "" }: TasklyLogoProps) {
           strokeLinejoin="round"
         />
       </svg>
-      <span className="text-sm font-bold uppercase tracking-[0.12em] text-slate-dark">
-        TASKLY
-      </span>
+      {!compact ? (
+        <span className="text-sm font-bold uppercase tracking-[0.12em] text-slate-dark">
+          TASKLY
+        </span>
+      ) : null}
     </Link>
   );
 }
