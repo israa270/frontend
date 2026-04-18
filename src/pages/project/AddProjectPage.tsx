@@ -117,7 +117,7 @@ export function AddProjectPage() {
             <ol className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <li>
                 <Link
-                  to="/dashboard"
+                  to="/project"
                   className="text-primary underline-offset-2 hover:underline"
                 >
                   Projects
@@ -252,7 +252,7 @@ export function AddProjectPage() {
           <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
             <button
               type="button"
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate("/project")}
               className="rounded-lg px-5 py-3 text-center text-body-md font-semibold text-primary hover:bg-surface-low focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
               Cancel

@@ -2,9 +2,9 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { RecoveryHashRedirect } from "./components/RecoveryHashRedirect";
 import { RequireAuth } from "./components/RequireAuth";
 import { AppShell } from "./components/layout/AppShell";
-import { DashboardHomePage } from "./pages/dashboard/DashboardHomePage";
 import { ShellPlaceholderPage } from "./pages/dashboard/ShellPlaceholderPage";
 import { AddProjectPage } from "./pages/project/AddProjectPage";
+import { ProjectsListPage } from "./pages/project/ProjectsListPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
@@ -29,7 +29,7 @@ export default function App() {
           }
         >
           <Route path="dashboard">
-            <Route index element={<DashboardHomePage />} />
+            <Route index element={<Navigate to="/project" replace />} />
             <Route
               path="epics"
               element={<ShellPlaceholderPage title="Project Epics" />}
@@ -48,6 +48,7 @@ export default function App() {
             />
           </Route>
           <Route path="project">
+            <Route index element={<ProjectsListPage />} />
             <Route path="add" element={<AddProjectPage />} />
           </Route>
         </Route>

@@ -66,7 +66,7 @@ export function LoginPage() {
       );
       syncFromCookies();
       dispatch(setUserFromSessionUser(result.user));
-      navigate("/dashboard", { replace: true });
+      navigate("/project", { replace: true });
     } catch (e) {
       const message = e instanceof Error ? e.message : "Login failed.";
       setRootError(message);
@@ -74,7 +74,7 @@ export function LoginPage() {
   });
 
   if (isHydrated && user && getRefreshTokenFromCookie()) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/project" replace />;
   }
 
   return (

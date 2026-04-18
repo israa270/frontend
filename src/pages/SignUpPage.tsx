@@ -69,7 +69,7 @@ export function SignUpPage() {
       syncFromCookies();
       const stored = getUserFromCookie();
       if (stored) dispatch(setUserFromSessionUser(stored));
-      navigate(getRefreshTokenFromCookie() ? "/dashboard" : "/login", {
+      navigate(getRefreshTokenFromCookie() ? "/project" : "/login", {
         replace: true,
       });
     } catch (e) {

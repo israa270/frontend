@@ -86,7 +86,7 @@ export function AppShell() {
         <AppNavbar onMenuClick={() => setMobileOpen(true)} />
         <main
           id="main-content"
-          className="min-h-0 flex-1 overflow-auto bg-white p-4 sm:p-6 lg:p-8"
+          className="min-h-0 flex-1 overflow-auto bg-background p-4 sm:p-6 lg:p-8"
         >
           <Outlet />
         </main>

@@ -28,7 +28,7 @@ type NavItem = {
 };
 
 const ITEMS: NavItem[] = [
-  { to: "/dashboard", end: true, label: "Projects", icon: "folder" },
+  { to: "/project", end: true, label: "Projects", icon: "folder" },
   { to: "/dashboard/epics", label: "Project Epics", icon: "account_tree" },
   { to: "/dashboard/tasks", label: "Project Tasks", icon: "checklist" },
   { to: "/dashboard/members", label: "Project Members", icon: "groups" },
@@ -77,7 +77,7 @@ export function AppSidebar({
       <div
         className={`flex shrink-0 items-center border-b border-surface-highest py-4 ${collapsed ? "justify-center px-2" : "px-4"}`}
       >
-        <TasklyLogo compact={collapsed} to="/dashboard" className="shrink-0" />
+        <TasklyLogo compact={collapsed} to="/project" className="shrink-0" />
       </div>
 
       <nav
