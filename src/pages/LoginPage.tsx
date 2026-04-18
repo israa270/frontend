@@ -4,6 +4,8 @@ import { useForm } from "react-hook-form";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { loginWithPassword } from "../api/login";
 import { useAuthSession } from "../hooks/useAuthSession";
+import { useAppDispatch } from "../store/hooks";
+import { setUserFromSessionUser } from "../store/slices/userSlice";
 import { TasklyLogo } from "../components/TasklyLogo";
 import {
   getRefreshTokenFromCookie,
@@ -19,6 +21,7 @@ function fieldErrorRing(hasError: boolean): string {
 }
 
 export function LoginPage() {
+  const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { user, isHydrated, syncFromCookies } = useAuthSession();
   const [rootError, setRootError] = useState<string | null>(null);
@@ -54,6 +57,7 @@ export function LoginPage() {
         values.rememberMe,
       );
       syncFromCookies();
+      dispatch(setUserFromSessionUser(result.user));
       navigate("/dashboard", { replace: true });
     } catch (e) {
       const message = e instanceof Error ? e.message : "Login failed.";

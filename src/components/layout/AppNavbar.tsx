@@ -1,21 +1,22 @@
-import type { AuthUserResponse } from "../../api/fetchAuthUser";
 import { useAuthSession } from "../../hooks/useAuthSession";
 import {
   displayNameFromAuthUser,
   initialsFromDisplayName,
   jobTitleFromAuthUser,
 } from "../../lib/userDisplay";
+import { useAppSelector } from "../../store/hooks";
+import { selectUserProfile } from "../../store/selectors";
 
 type AppNavbarProps = {
-  apiUser: AuthUserResponse | null;
   onMenuClick: () => void;
 };
 
-export function AppNavbar({ apiUser, onMenuClick }: AppNavbarProps) {
+export function AppNavbar({ onMenuClick }: AppNavbarProps) {
   const { user: cookieUser } = useAuthSession();
+  const profile = useAppSelector(selectUserProfile);
 
-  const name = displayNameFromAuthUser(apiUser, cookieUser);
-  const jobTitle = jobTitleFromAuthUser(apiUser, cookieUser);
+  const name = displayNameFromAuthUser(profile, cookieUser);
+  const jobTitle = jobTitleFromAuthUser(profile, cookieUser);
   const initials = initialsFromDisplayName(name);
 
   return (

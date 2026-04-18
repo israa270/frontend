@@ -1,5 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuthSession } from "../../hooks/useAuthSession";
+import { useAppDispatch } from "../../store/hooks";
+import { clearUserProfile } from "../../store/slices/userSlice";
 import { TasklyLogo } from "../TasklyLogo";
 
 const navClass = ({
@@ -46,6 +48,7 @@ export function AppSidebar({
   onNavigate,
   showCollapseControl = true,
 }: AppSidebarProps) {
+  const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { signOut } = useAuthSession();
 
@@ -55,6 +58,7 @@ export function AppSidebar({
 
   const handleLogout = () => {
     onNavigate?.();
+    dispatch(clearUserProfile());
     signOut();
     navigate("/login", { replace: true });
   };

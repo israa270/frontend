@@ -4,7 +4,12 @@ import { useForm, useWatch } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { signUpWithPassword } from "../api/signup";
 import { useAuthSession } from "../hooks/useAuthSession";
-import { getRefreshTokenFromCookie } from "../lib/authCookies";
+import {
+  getRefreshTokenFromCookie,
+  getUserFromCookie,
+} from "../lib/authCookies";
+import { useAppDispatch } from "../store/hooks";
+import { setUserFromSessionUser } from "../store/slices/userSlice";
 import { PasswordRequirements } from "../components/PasswordRequirements";
 import { TasklyLogo } from "../components/TasklyLogo";
 import {
@@ -20,6 +25,7 @@ function fieldErrorRing(hasError: boolean): string {
 }
 
 export function SignUpPage() {
+  const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { syncFromCookies } = useAuthSession();
   const [rootError, setRootError] = useState<string | null>(null);
@@ -61,6 +67,8 @@ export function SignUpPage() {
         },
       });
       syncFromCookies();
+      const stored = getUserFromCookie();
+      if (stored) dispatch(setUserFromSessionUser(stored));
       navigate(getRefreshTokenFromCookie() ? "/dashboard" : "/login", {
         replace: true,
       });

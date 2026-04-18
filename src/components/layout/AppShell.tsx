@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
-import { fetchAuthUser, type AuthUserResponse } from "../../api/fetchAuthUser";
 import { useAuthSession } from "../../hooks/useAuthSession";
+import { useAppDispatch } from "../../store/hooks";
+import { fetchUserProfile } from "../../store/slices/userSlice";
 import { AppNavbar } from "./AppNavbar";
 import { AppSidebar } from "./AppSidebar";
 
@@ -25,8 +26,8 @@ function useIsLargeScreen(): boolean {
 }
 
 export function AppShell() {
+  const dispatch = useAppDispatch();
   const { getAccessToken } = useAuthSession();
-  const [apiUser, setApiUser] = useState<AuthUserResponse | null>(null);
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1";
@@ -42,19 +43,14 @@ export function AppShell() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      try {
-        const token = await getAccessToken();
-        if (!token || cancelled) return;
-        const u = await fetchAuthUser(token);
-        if (!cancelled) setApiUser(u);
-      } catch {
-        if (!cancelled) setApiUser(null);
-      }
+      const token = await getAccessToken();
+      if (!token || cancelled) return;
+      await dispatch(fetchUserProfile(token));
     })();
     return () => {
       cancelled = true;
     };
-  }, [getAccessToken]);
+  }, [dispatch, getAccessToken]);
 
   const closeMobile = useCallback(() => setMobileOpen(false), []);
 
@@ -87,7 +83,7 @@ export function AppShell() {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <AppNavbar apiUser={apiUser} onMenuClick={() => setMobileOpen(true)} />
+        <AppNavbar onMenuClick={() => setMobileOpen(true)} />
         <main
           id="main-content"
           className="min-h-0 flex-1 overflow-auto bg-white p-4 sm:p-6 lg:p-8"
