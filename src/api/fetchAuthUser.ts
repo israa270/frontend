@@ -1,5 +1,6 @@
 import { parseGoTrueErrorMessage } from "./authErrors";
-import { getSupabaseAnonKey, getSupabaseUrl } from "../lib/env";
+import { getSupabaseUrl } from "../lib/env";
+import { supabaseUserHeaders } from "../lib/supabaseHeaders";
 
 export type AuthUserResponse = {
   id: string;
@@ -20,8 +21,7 @@ export async function fetchAuthUser(
     method: "GET",
     headers: {
       "Content-Type": "application/json",
-      apikey: getSupabaseAnonKey(),
-      Authorization: `Bearer ${accessToken}`,
+      ...supabaseUserHeaders(accessToken),
     },
   });
 

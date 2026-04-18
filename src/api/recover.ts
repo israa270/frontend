@@ -1,4 +1,5 @@
-import { getSupabaseAnonKey, getSupabaseUrl } from "../lib/env";
+import { getSupabaseUrl } from "../lib/env";
+import { supabaseAnonHeaders } from "../lib/supabaseHeaders";
 import { parseGoTrueErrorMessage } from "./authErrors";
 
 export async function requestPasswordRecovery(email: string): Promise<void> {
@@ -7,7 +8,7 @@ export async function requestPasswordRecovery(email: string): Promise<void> {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      apikey: getSupabaseAnonKey(),
+      ...supabaseAnonHeaders(),
     },
     body: JSON.stringify({ email: email.trim() }),
   });

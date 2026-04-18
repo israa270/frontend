@@ -1,5 +1,6 @@
 import { parseGoTrueErrorMessage } from "./authErrors";
-import { getSupabaseAnonKey, getSupabaseUrl } from "../lib/env";
+import { getSupabaseUrl } from "../lib/env";
+import { supabaseUserHeaders } from "../lib/supabaseHeaders";
 
 /** Invalidates the session on the auth server (Supabase GoTrue). */
 export async function logoutRemote(accessToken: string): Promise<void> {
@@ -8,8 +9,7 @@ export async function logoutRemote(accessToken: string): Promise<void> {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      apikey: getSupabaseAnonKey(),
-      Authorization: `Bearer ${accessToken}`,
+      ...supabaseUserHeaders(accessToken),
     },
     body: "{}",
   });

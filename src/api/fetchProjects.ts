@@ -1,4 +1,5 @@
-import { getSupabaseAnonKey, getSupabaseUrl } from "../lib/env";
+import { getSupabaseUrl } from "../lib/env";
+import { supabaseUserHeaders } from "../lib/supabaseHeaders";
 import { HttpError } from "./httpError";
 import { parsePostgrestError } from "./restErrors";
 
@@ -50,8 +51,7 @@ export async function fetchProjects(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      apikey: getSupabaseAnonKey(),
-      Authorization: `Bearer ${accessToken}`,
+      ...supabaseUserHeaders(accessToken),
     },
     body: "{}",
   });

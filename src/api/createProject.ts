@@ -1,4 +1,5 @@
-import { getSupabaseAnonKey, getSupabaseUrl } from "../lib/env";
+import { getSupabaseUrl } from "../lib/env";
+import { supabaseUserHeaders } from "../lib/supabaseHeaders";
 import { parsePostgrestError } from "./restErrors";
 
 export type CreateProjectBody = {
@@ -21,9 +22,8 @@ export async function createProject(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      apikey: getSupabaseAnonKey(),
-      Authorization: `Bearer ${accessToken}`,
       Prefer: "return=minimal",
+      ...supabaseUserHeaders(accessToken),
     },
     body: JSON.stringify(payload),
   });

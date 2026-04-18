@@ -1,4 +1,5 @@
-import { getSupabaseAnonKey, getSupabaseUrl } from "../lib/env";
+import { getSupabaseUrl } from "../lib/env";
+import { supabaseAnonHeaders } from "../lib/supabaseHeaders";
 import { parseGoTrueErrorMessage } from "./authErrors";
 
 export type RefreshTokenSuccess = {
@@ -14,7 +15,7 @@ export async function refreshWithToken(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      apikey: getSupabaseAnonKey(),
+      ...supabaseAnonHeaders(),
     },
     body: JSON.stringify({ refresh_token: refreshToken }),
   });

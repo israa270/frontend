@@ -1,4 +1,5 @@
-import { getSupabaseAnonKey, getSupabaseUrl } from "../lib/env";
+import { getSupabaseUrl } from "../lib/env";
+import { supabaseUserHeaders } from "../lib/supabaseHeaders";
 import { parseGoTrueErrorMessage } from "./authErrors";
 
 export async function updateUserPassword(
@@ -10,8 +11,7 @@ export async function updateUserPassword(
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
-      apikey: getSupabaseAnonKey(),
-      Authorization: `Bearer ${accessToken}`,
+      ...supabaseUserHeaders(accessToken),
     },
     body: JSON.stringify({ password: newPassword }),
   });

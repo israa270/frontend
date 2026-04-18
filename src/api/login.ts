@@ -1,6 +1,8 @@
 import type { StoredAuthUser } from "../lib/authCookies";
-import { getSupabaseAnonKey, getSupabaseUrl } from "../lib/env";
+import { getSupabaseUrl } from "../lib/env";
+import { supabaseAnonHeaders } from "../lib/supabaseHeaders";
 import { parseGoTrueErrorMessage } from "./authErrors";
+import { mapSupabaseNetworkError } from "./mapSupabaseNetworkError";
 
 export type PasswordLoginBody = {
   email: string;
@@ -31,17 +33,22 @@ export async function loginWithPassword(
   body: PasswordLoginBody,
 ): Promise<PasswordLoginSuccess> {
   const url = `${getSupabaseUrl()}/auth/v1/token?grant_type=password`;
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      apikey: getSupabaseAnonKey(),
-    },
-    body: JSON.stringify({
-      email: body.email.trim(),
-      password: body.password,
-    }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...supabaseAnonHeaders(),
+      },
+      body: JSON.stringify({
+        email: body.email.trim(),
+        password: body.password,
+      }),
+    });
+  } catch (e) {
+    mapSupabaseNetworkError(e);
+  }
 
   const data: unknown = await response.json().catch(() => null);
 

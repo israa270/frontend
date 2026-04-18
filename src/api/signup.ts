@@ -1,6 +1,8 @@
 import type { StoredAuthUser } from "../lib/authCookies";
 import { persistAuthCookies } from "../lib/authCookies";
-import { getSupabaseAnonKey, getSupabaseUrl } from "../lib/env";
+import { getSupabaseUrl } from "../lib/env";
+import { supabaseAnonHeaders } from "../lib/supabaseHeaders";
+import { mapSupabaseNetworkError } from "./mapSupabaseNetworkError";
 import { getJwtSubject } from "../lib/jwt";
 
 export type SignUpRequestBody = {
@@ -77,14 +79,19 @@ export async function signUpWithPassword(
   body: SignUpRequestBody,
 ): Promise<SignUpSuccess> {
   const url = `${getSupabaseUrl()}/auth/v1/signup`;
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      apikey: getSupabaseAnonKey(),
-    },
-    body: JSON.stringify(body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...supabaseAnonHeaders(),
+      },
+      body: JSON.stringify(body),
+    });
+  } catch (e) {
+    mapSupabaseNetworkError(e);
+  }
 
   const data: unknown = await response.json().catch(() => null);
 
