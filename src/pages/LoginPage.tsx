@@ -162,12 +162,12 @@ export function LoginPage() {
                 />
                 Remember me
               </label>
-              <button
-                type="button"
-                className="border-0 bg-transparent p-0 text-body-md font-semibold text-primary underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              <Link
+                to="/forgot-password"
+                className="text-body-md font-semibold text-primary underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
               >
                 Forgot Password?
-              </button>
+              </Link>
             </div>
 
             <button
