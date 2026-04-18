@@ -29,7 +29,7 @@ function formatMmSs(totalSec: number): string {
 }
 
 const SUCCESS_COPY =
-  "If an account exists with this email, we've sent a password reset link.";
+  "If an account exists with this email, we’ve sent a password reset link.";
 
 export function ForgotPasswordPage() {
   const [rootError, setRootError] = useState<string | null>(null);
@@ -116,7 +116,9 @@ export function ForgotPasswordPage() {
           className="mx-auto w-full max-w-[440px] rounded-2xl bg-white px-6 py-8 shadow-card sm:px-10 sm:py-10"
         >
           <div className="mb-8 text-center">
-            <h1 className="text-headline-lg text-primary">Forgot password?</h1>
+            <h1 className="text-headline-lg text-slate-dark">
+              Forgot password?
+            </h1>
             <p className="mt-2 text-body-md text-slate-medium">
               No worries, we&apos;ll send you reset instructions.
             </p>
@@ -155,7 +157,7 @@ export function ForgotPasswordPage() {
               <div>
                 <label
                   htmlFor="forgot-email"
-                  className="mb-1.5 block text-label-sm text-slate-dark"
+                  className="mb-1.5 block text-label-sm uppercase text-slate-dark"
                 >
                   Email address
                 </label>
@@ -188,7 +190,7 @@ export function ForgotPasswordPage() {
                 disabled={
                   isSubmitting || successfulSends >= MAX_SUCCESSFUL_SENDS
                 }
-                className="w-full rounded-lg bg-primary py-3.5 text-center text-body-md font-semibold text-on-primary shadow-soft transition-opacity hover:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-55"
+                className="w-full rounded-lg bg-primary-container py-3.5 text-center text-body-md font-semibold text-on-primary-container shadow-soft transition-opacity hover:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-55"
               >
                 {isSubmitting ? "Sending…" : "Send Reset Link"}
               </button>
@@ -201,14 +203,14 @@ export function ForgotPasswordPage() {
 
           {showSuccess ? (
             <div className="mt-6 flex flex-col gap-3">
-              <p className="text-center text-label-sm text-slate-medium">
-                Don&apos;t receive an email? Resend
+              <p className="text-center text-label-sm font-semibold uppercase tracking-wide text-slate-medium">
+                Don&apos;t receive the email?
               </p>
               <button
                 type="button"
                 onClick={onResend}
                 disabled={!resendAvailable || isResending}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-surface-highest px-4 py-3 text-body-md font-medium text-slate-medium transition-opacity focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary enabled:hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#E8EFFF] px-4 py-3 text-body-md font-medium text-slate-medium transition-opacity focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary enabled:hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <span className="icon-material text-lg" aria-hidden>
                   schedule
@@ -234,7 +236,7 @@ export function ForgotPasswordPage() {
           <p className="mt-8 text-center">
             <Link
               to="/login"
-              className="inline-flex items-center gap-1 text-body-md font-semibold text-primary no-underline hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              className="inline-flex items-center gap-1 text-body-md font-semibold text-slate-dark no-underline hover:text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
               <span aria-hidden>←</span> Back to log in
             </Link>

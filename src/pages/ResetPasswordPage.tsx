@@ -106,7 +106,9 @@ export function ResetPasswordPage() {
         >
           {invalidLink ? (
             <div className="text-center">
-              <h1 className="text-headline-lg text-primary">Reset password</h1>
+              <h1 className="text-headline-lg text-slate-dark">
+                Reset password
+              </h1>
               <p className="mt-4 text-body-md text-error" role="alert">
                 Invalid or expired reset link.
               </p>
@@ -122,7 +124,7 @@ export function ResetPasswordPage() {
           ) : (
             <>
               <div className="mb-8 text-center">
-                <h1 className="text-headline-lg text-primary">
+                <h1 className="text-headline-lg text-slate-dark">
                   Create a New Password
                 </h1>
                 <p className="mt-2 text-body-md text-slate-medium">
@@ -159,7 +161,7 @@ export function ResetPasswordPage() {
                   <div>
                     <label
                       htmlFor="reset-password"
-                      className="mb-1.5 block text-label-sm text-slate-dark"
+                      className="mb-1.5 block text-label-sm uppercase text-slate-medium"
                     >
                       New password
                     </label>
@@ -205,7 +207,7 @@ export function ResetPasswordPage() {
                   <div>
                     <label
                       htmlFor="reset-confirm"
-                      className="mb-1.5 block text-label-sm text-slate-dark"
+                      className="mb-1.5 block text-label-sm uppercase text-slate-medium"
                     >
                       Confirm password
                     </label>
@@ -253,7 +255,7 @@ export function ResetPasswordPage() {
                     id="reset-pw-rules"
                     className="rounded-lg bg-surface-low px-4 py-3"
                   >
-                    <p className="mb-3 text-label-sm text-slate-medium">
+                    <p className="mb-3 text-label-sm font-semibold uppercase tracking-wide text-slate-medium">
                       Security requirements
                     </p>
                     <PasswordRequirementChecklist password={passwordValue} />
