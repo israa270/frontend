@@ -5,6 +5,7 @@ import { AppShell } from "./components/layout/AppShell";
 import { ShellPlaceholderPage } from "./pages/dashboard/ShellPlaceholderPage";
 import { AddProjectPage } from "./pages/project/AddProjectPage";
 import { EditProjectPage } from "./pages/project/EditProjectPage";
+import { ProjectMembersPage } from "./pages/project/ProjectMembersPage";
 import { ProjectsListPage } from "./pages/project/ProjectsListPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { HomePage } from "./pages/HomePage";
@@ -63,7 +64,7 @@ export default function App() {
               />
               <Route
                 path="members"
-                element={<ShellPlaceholderPage title="Project Members" />}
+                element={<ProjectMembersPage />}
               />
               <Route
                 path="edit"
