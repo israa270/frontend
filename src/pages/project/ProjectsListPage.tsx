@@ -83,15 +83,30 @@ function ProjectCardSkeleton() {
 function ProjectCard({
   project,
   onOpen,
+  onEdit,
 }: {
   project: ProjectListItem;
   onOpen: (projectId: string) => void;
+  onEdit: (projectId: string) => void;
 }) {
   return (
     <article className="flex flex-col rounded-2xl border border-surface-highest bg-white p-5 shadow-soft">
-      <h2 className="text-title-md font-semibold text-slate-dark">
-        {project.name}
-      </h2>
+      <div className="flex items-start justify-between gap-3">
+        <h2 className="text-title-md font-semibold text-slate-dark">
+          {project.name}
+        </h2>
+        <button
+          type="button"
+          aria-label={`Edit ${project.name}`}
+          title="Edit project"
+          onClick={() => onEdit(project.id)}
+          className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-surface-highest text-slate-medium hover:bg-surface-low hover:text-slate-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        >
+          <span className="icon-material text-[18px]" aria-hidden>
+            edit
+          </span>
+        </button>
+      </div>
       <p className="mt-2 min-h-[4.5rem] flex-1 text-body-md text-slate-medium">
         {project.description.trim() ? project.description : "—"}
       </p>
@@ -304,6 +319,12 @@ export function ProjectsListPage() {
     },
     [navigate],
   );
+  const handleEditProject = useCallback(
+    (projectId: string) => {
+      navigate(`/project/${encodeURIComponent(projectId)}/edit`);
+    },
+    [navigate],
+  );
 
   return (
     <div className="mx-auto w-full max-w-6xl">
@@ -361,6 +382,7 @@ export function ProjectsListPage() {
                   key={`${project.id}-${index}`}
                   project={project}
                   onOpen={handleOpenProject}
+                  onEdit={handleEditProject}
                 />
               ))}
               <AddProjectPlaceholderCard />

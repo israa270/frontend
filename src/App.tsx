@@ -4,6 +4,7 @@ import { RequireAuth } from "./components/RequireAuth";
 import { AppShell } from "./components/layout/AppShell";
 import { ShellPlaceholderPage } from "./pages/dashboard/ShellPlaceholderPage";
 import { AddProjectPage } from "./pages/project/AddProjectPage";
+import { EditProjectPage } from "./pages/project/EditProjectPage";
 import { ProjectsListPage } from "./pages/project/ProjectsListPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { HomePage } from "./pages/HomePage";
@@ -66,7 +67,7 @@ export default function App() {
               />
               <Route
                 path="edit"
-                element={<ShellPlaceholderPage title="Project Details" />}
+                element={<EditProjectPage />}
               />
             </Route>
           </Route>
