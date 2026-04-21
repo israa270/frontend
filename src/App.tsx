@@ -6,6 +6,7 @@ import { ShellPlaceholderPage } from "./pages/dashboard/ShellPlaceholderPage";
 import { AddProjectPage } from "./pages/project/AddProjectPage";
 import { AddEpicPage } from "./pages/project/AddEpicPage";
 import { EditProjectPage } from "./pages/project/EditProjectPage";
+import { ProjectEpicsPage } from "./pages/project/ProjectEpicsPage";
 import { ProjectMembersPage } from "./pages/project/ProjectMembersPage";
 import { ProjectsListPage } from "./pages/project/ProjectsListPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
@@ -57,7 +58,7 @@ export default function App() {
               <Route index element={<Navigate to="epics" replace />} />
               <Route
                 path="epics"
-                element={<ShellPlaceholderPage title="Project Epics" />}
+                element={<ProjectEpicsPage />}
               />
               <Route path="epics/new" element={<AddEpicPage />} />
               <Route
