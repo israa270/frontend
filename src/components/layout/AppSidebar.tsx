@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { NavLink, useNavigate, useParams } from "react-router-dom";
 import { useAuthSession } from "../../hooks/useAuthSession";
 import { runFullLogout } from "../../lib/runFullLogout";
 import { useAppDispatch } from "../../store/hooks";
@@ -27,13 +27,20 @@ type NavItem = {
   icon: string;
 };
 
-const ITEMS: NavItem[] = [
-  { to: "/project", end: true, label: "Projects", icon: "folder" },
-  { to: "/dashboard/epics", label: "Project Epics", icon: "account_tree" },
-  { to: "/dashboard/tasks", label: "Project Tasks", icon: "checklist" },
-  { to: "/dashboard/members", label: "Project Members", icon: "groups" },
-  { to: "/dashboard/details", label: "Project Details", icon: "info" },
-];
+function getNavItems(projectId: string | undefined): NavItem[] {
+  const items: NavItem[] = [
+    { to: "/project", end: true, label: "Projects", icon: "folder" },
+  ];
+  if (!projectId) return items;
+  const encoded = encodeURIComponent(projectId);
+  items.push(
+    { to: `/project/${encoded}/tasks`, label: "Project Tasks", icon: "checklist" },
+    { to: `/project/${encoded}/members`, label: "Project Members", icon: "groups" },
+    { to: `/project/${encoded}/epics`, label: "Project Epics", icon: "account_tree" },
+    { to: `/project/${encoded}/edit`, label: "Project Details", icon: "info" },
+  );
+  return items;
+}
 
 type AppSidebarProps = {
   collapsed: boolean;
@@ -51,8 +58,11 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const params = useParams();
+  const projectId = typeof params.projectId === "string" ? params.projectId : undefined;
   const { signOut, getAccessToken } = useAuthSession();
   const [logoutBusy, setLogoutBusy] = useState(false);
+  const items = useMemo(() => getNavItems(projectId), [projectId]);
 
   const linkClick = () => {
     onNavigate?.();
@@ -84,7 +94,7 @@ export function AppSidebar({
         className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-2"
         aria-label="Main"
       >
-        {ITEMS.map((item) => (
+        {items.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}

@@ -50,6 +50,25 @@ export default function App() {
           <Route path="project">
             <Route index element={<ProjectsListPage />} />
             <Route path="add" element={<AddProjectPage />} />
+            <Route path=":projectId">
+              <Route index element={<Navigate to="epics" replace />} />
+              <Route
+                path="epics"
+                element={<ShellPlaceholderPage title="Project Epics" />}
+              />
+              <Route
+                path="tasks"
+                element={<ShellPlaceholderPage title="Project Tasks" />}
+              />
+              <Route
+                path="members"
+                element={<ShellPlaceholderPage title="Project Members" />}
+              />
+              <Route
+                path="edit"
+                element={<ShellPlaceholderPage title="Project Details" />}
+              />
+            </Route>
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

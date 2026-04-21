@@ -80,7 +80,13 @@ function ProjectCardSkeleton() {
   );
 }
 
-function ProjectCard({ project }: { project: ProjectListItem }) {
+function ProjectCard({
+  project,
+  onOpen,
+}: {
+  project: ProjectListItem;
+  onOpen: (projectId: string) => void;
+}) {
   return (
     <article className="flex flex-col rounded-2xl border border-surface-highest bg-white p-5 shadow-soft">
       <h2 className="text-title-md font-semibold text-slate-dark">
@@ -100,6 +106,16 @@ function ProjectCard({ project }: { project: ProjectListItem }) {
           {formatProjectDate(project.createdAt)}
         </time>
       </div>
+      <button
+        type="button"
+        onClick={() => onOpen(project.id)}
+        className="mt-5 inline-flex items-center justify-center gap-2 rounded-lg bg-surface-low px-4 py-2.5 text-sm font-semibold text-slate-dark shadow-soft hover:bg-surface-highest/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      >
+        Open project
+        <span className="icon-material text-[18px]" aria-hidden>
+          chevron_right
+        </span>
+      </button>
     </article>
   );
 }
@@ -282,6 +298,12 @@ export function ProjectsListPage() {
   const rangeEnd = pageRange?.end != null ? pageRange.end + 1 : shownCount;
   const canGoPrev = currentPage > 1;
   const canGoNext = currentPage < totalPages;
+  const handleOpenProject = useCallback(
+    (projectId: string) => {
+      navigate(`/project/${encodeURIComponent(projectId)}/epics`);
+    },
+    [navigate],
+  );
 
   return (
     <div className="mx-auto w-full max-w-6xl">
@@ -335,7 +357,11 @@ export function ProjectsListPage() {
           <>
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
               {projects?.map((project, index) => (
-                <ProjectCard key={`${project.id}-${index}`} project={project} />
+                <ProjectCard
+                  key={`${project.id}-${index}`}
+                  project={project}
+                  onOpen={handleOpenProject}
+                />
               ))}
               <AddProjectPlaceholderCard />
             </div>
