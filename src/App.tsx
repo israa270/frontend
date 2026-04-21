@@ -4,6 +4,7 @@ import { RequireAuth } from "./components/RequireAuth";
 import { AppShell } from "./components/layout/AppShell";
 import { ShellPlaceholderPage } from "./pages/dashboard/ShellPlaceholderPage";
 import { AddProjectPage } from "./pages/project/AddProjectPage";
+import { AddEpicPage } from "./pages/project/AddEpicPage";
 import { EditProjectPage } from "./pages/project/EditProjectPage";
 import { ProjectMembersPage } from "./pages/project/ProjectMembersPage";
 import { ProjectsListPage } from "./pages/project/ProjectsListPage";
@@ -58,6 +59,7 @@ export default function App() {
                 path="epics"
                 element={<ShellPlaceholderPage title="Project Epics" />}
               />
+              <Route path="epics/new" element={<AddEpicPage />} />
               <Route
                 path="tasks"
                 element={<ShellPlaceholderPage title="Project Tasks" />}
