@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { fetchProjectEpics, type ProjectEpicItem } from "../../api/fetchProjectEpics";
+import {
+  fetchProjectEpicDetails,
+  fetchProjectEpics,
+  type ProjectEpicItem,
+} from "../../api/fetchProjectEpics";
 import { fetchProjectById } from "../../api/fetchProjectById";
 import { HttpError } from "../../api/httpError";
 import { useAuthSession } from "../../hooks/useAuthSession";
@@ -40,6 +44,17 @@ function formatDate(value: string | null): string {
   return new Intl.DateTimeFormat("en-US", {
     day: "2-digit",
     month: "short",
+    year: "numeric",
+  }).format(d);
+}
+
+function formatModalDate(value: string | null): string {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
     year: "numeric",
   }).format(d);
 }
@@ -134,6 +149,152 @@ function EpicsEmptyState({ createTo }: { createTo: string }) {
   );
 }
 
+function EpicDetailsModal({
+  epic,
+  loading,
+  error,
+  onClose,
+}: {
+  epic: ProjectEpicItem | null;
+  loading: boolean;
+  error: string | null;
+  onClose: () => void;
+}) {
+  if (!loading && !error && !epic) return null;
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-dark/35 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Epic details"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-3xl rounded-2xl bg-white p-6 shadow-card sm:p-7"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {loading ? (
+          <div className="animate-pulse space-y-5">
+            <div className="h-5 w-20 rounded bg-surface-highest" />
+            <div className="h-8 w-3/4 rounded bg-surface-highest" />
+            <div className="h-20 w-full rounded bg-surface-highest" />
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="h-12 rounded bg-surface-highest" />
+              <div className="h-12 rounded bg-surface-highest" />
+              <div className="h-12 rounded bg-surface-highest" />
+            </div>
+          </div>
+        ) : error ? (
+          <div className="text-center">
+            <h2 className="text-title-md text-slate-dark">Something went wrong</h2>
+            <p className="mt-2 text-body-md text-slate-medium">{error}</p>
+            <button
+              type="button"
+              onClick={onClose}
+              className="mt-5 rounded-lg bg-primary-container px-5 py-2.5 text-sm font-semibold text-on-primary-container"
+            >
+              Close
+            </button>
+          </div>
+        ) : epic ? (
+          <>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <span className="rounded bg-emerald-100 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-800">
+                  {epic.epicId}
+                </span>
+                <h2 className="mt-3 text-headline-md text-slate-dark">{epic.title}</h2>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="inline-flex size-9 items-center justify-center rounded-lg text-slate-medium hover:bg-surface-low"
+                aria-label="Close epic details"
+              >
+                <span className="icon-material text-xl" aria-hidden>
+                  close
+                </span>
+              </button>
+            </div>
+            <p className="mt-5 text-body-md text-slate-medium">
+              {epic.description.trim() || "No description provided"}
+            </p>
+
+            <div className="mt-6 grid gap-4 sm:grid-cols-3">
+              <div>
+                <p className="text-label-sm font-semibold uppercase tracking-wide text-slate-light">
+                  Created by
+                </p>
+                <div className="mt-2 flex items-center gap-2">
+                  <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-xs font-semibold text-on-primary">
+                    {initialsFromName(epic.createdBy?.name)}
+                  </div>
+                  <p className="text-sm font-semibold text-slate-dark">
+                    {epic.createdBy?.name || "Unknown user"}
+                  </p>
+                </div>
+              </div>
+              <div>
+                <p className="text-label-sm font-semibold uppercase tracking-wide text-slate-light">
+                  Assignee
+                </p>
+                <div className="mt-2 flex items-center gap-2">
+                  <div className="flex size-8 items-center justify-center rounded-lg bg-surface-low text-xs font-semibold text-primary">
+                    {initialsFromName(epic.assignee?.name)}
+                  </div>
+                  <p className="text-sm font-semibold text-slate-dark">
+                    {epic.assignee?.name || "Unassigned"}
+                  </p>
+                </div>
+              </div>
+              <div>
+                <p className="text-label-sm font-semibold uppercase tracking-wide text-slate-light">
+                  Created at
+                </p>
+                <p className="mt-2 text-sm font-semibold text-slate-dark">
+                  {formatModalDate(epic.createdAt)}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-7 border-t border-surface-highest pt-5">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-title-sm text-slate-dark">Epic Tasks</h3>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-semibold text-primary hover:bg-surface-low"
+                >
+                  <span className="icon-material text-[18px]" aria-hidden>
+                    add
+                  </span>
+                  Add Task
+                </button>
+              </div>
+              <div className="mt-4 rounded-xl border-2 border-dashed border-surface-highest bg-surface-low/30 px-5 py-10 text-center">
+                <span className="icon-material text-4xl text-slate-light" aria-hidden>
+                  format_list_bulleted
+                </span>
+                <p className="mt-3 text-body-md text-slate-medium">
+                  No tasks have been added to this epic yet
+                </p>
+                <button
+                  type="button"
+                  className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary-container px-4 py-2 text-sm font-semibold text-on-primary-container shadow-soft"
+                >
+                  <span className="icon-material text-[18px]" aria-hidden>
+                    add
+                  </span>
+                  Add Task
+                </button>
+              </div>
+            </div>
+          </>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export function ProjectEpicsPage() {
   const navigate = useNavigate();
   const { projectId } = useParams();
@@ -151,6 +312,10 @@ export function ProjectEpicsPage() {
   const [pageRange, setPageRange] = useState<{ start: number; end: number } | null>(
     null,
   );
+  const [selectedEpicId, setSelectedEpicId] = useState<string | null>(null);
+  const [selectedEpic, setSelectedEpic] = useState<ProjectEpicItem | null>(null);
+  const [modalLoading, setModalLoading] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   const loadEpics = useCallback(async () => {
@@ -217,6 +382,12 @@ export function ProjectEpicsPage() {
   }, [isMobile]);
 
   useEffect(() => {
+    setSelectedEpicId(null);
+    setSelectedEpic(null);
+    setModalError(null);
+  }, [selectedProjectId]);
+
+  useEffect(() => {
     if (!isMobile || loading || loadingMore || !!loadError) return;
     if (epics.length >= totalCount || currentPage >= totalPages) return;
     const onScroll = () => {
@@ -262,6 +433,47 @@ export function ProjectEpicsPage() {
     },
     [totalPages, currentPage],
   );
+
+  useEffect(() => {
+    if (!selectedEpicId || !selectedProjectId) return;
+    let cancelled = false;
+    void (async () => {
+      setModalLoading(true);
+      setModalError(null);
+      try {
+        const token = await getAccessToken();
+        if (!token) throw new HttpError("Unauthorized", 401);
+        const epic = await fetchProjectEpicDetails(token, selectedProjectId, selectedEpicId);
+        if (cancelled) return;
+        setSelectedEpic(epic);
+      } catch (error) {
+        if (cancelled) return;
+        if (error instanceof HttpError && error.status === 401) {
+          signOut();
+          navigate("/login", { replace: true });
+          return;
+        }
+        setModalError("Failed to load epic details");
+      } finally {
+        if (!cancelled) setModalLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedEpicId, selectedProjectId, getAccessToken, signOut, navigate]);
+
+  const openEpicModal = useCallback((epicId: string) => {
+    setSelectedEpicId(epicId);
+    setSelectedEpic(null);
+    setModalError(null);
+  }, []);
+  const closeEpicModal = useCallback(() => {
+    setSelectedEpicId(null);
+    setSelectedEpic(null);
+    setModalError(null);
+    setModalLoading(false);
+  }, []);
 
   return (
     <div className="mx-auto w-full max-w-6xl">
@@ -329,11 +541,12 @@ export function ProjectEpicsPage() {
               return (
                 <article
                   key={epic.id}
+                  onClick={() => openEpicModal(epic.id)}
                   className={`rounded-2xl border bg-white p-4 shadow-soft ${
                     done
                       ? "border-primary/20 bg-primary/5"
                       : "border-surface-highest"
-                  }`}
+                  } cursor-pointer`}
                 >
                   <div className="mb-3 flex items-center justify-between">
                     <span className="rounded bg-emerald-100 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-800">
@@ -342,6 +555,7 @@ export function ProjectEpicsPage() {
                     <button
                       type="button"
                       aria-label={`Actions for ${epic.title}`}
+                      onClick={(e) => e.stopPropagation()}
                       className="inline-flex size-8 items-center justify-center rounded-lg text-slate-medium hover:bg-surface-low"
                     >
                       <span className="icon-material text-[18px]" aria-hidden>
@@ -446,6 +660,14 @@ export function ProjectEpicsPage() {
           </footer>
         </>
       )}
+      {selectedEpicId ? (
+        <EpicDetailsModal
+          epic={selectedEpic}
+          loading={modalLoading}
+          error={modalError}
+          onClose={closeEpicModal}
+        />
+      ) : null}
     </div>
   );
 }

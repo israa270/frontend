@@ -133,3 +133,41 @@ export async function fetchProjectEpics(
   );
   return { epics, totalCount, rangeStart, rangeEnd };
 }
+
+export async function fetchProjectEpicDetails(
+  accessToken: string,
+  projectId: string,
+  epicId: string,
+): Promise<ProjectEpicItem> {
+  const encodedProjectId = encodeURIComponent(projectId);
+  const encodedEpicId = encodeURIComponent(epicId);
+  const query = new URLSearchParams({
+    project_id: `eq.${encodedProjectId}`,
+    id: `eq.${encodedEpicId}`,
+  });
+  const url = `${getSupabaseUrl()}/rest/v1/project_epics?${query.toString()}`;
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      ...supabaseUserHeaders(accessToken),
+    },
+  });
+
+  if (response.status === 401) {
+    throw new HttpError("Unauthorized", 401);
+  }
+
+  const data: unknown = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new HttpError(parsePostgrestError(data), response.status);
+  }
+  if (!Array.isArray(data) || data.length === 0) {
+    throw new HttpError("Epic not found.", 404);
+  }
+  const epic = normalizeEpic(data[0]);
+  if (!epic) {
+    throw new HttpError("Invalid epic details response.", 500);
+  }
+  return epic;
+}
