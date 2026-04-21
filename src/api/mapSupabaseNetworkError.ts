@@ -2,7 +2,7 @@
 export function mapSupabaseNetworkError(e: unknown): never {
   if (e instanceof TypeError) {
     throw new Error(
-      "Cannot reach Supabase (network error). Check VITE_SUPABASE_URL in .env matches Supabase → Settings → API (single line), then restart the dev server.",
+      "Cannot reach the API (network error). In dev, requests use the Vite proxy at /supabase — restart `pnpm dev` after changing .env. Confirm VITE_SUPABASE_URL matches Supabase → Settings → API.",
     );
   }
   throw e;

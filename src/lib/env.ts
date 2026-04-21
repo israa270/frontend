@@ -8,22 +8,38 @@ function requireEnv(name: keyof ImportMetaEnv): string {
   return value;
 }
 
-export function getSupabaseUrl(): string {
-  const raw = requireEnv("VITE_SUPABASE_URL").trim().replace(/\/$/, "");
-  let host: string;
+function parseProjectUrl(raw: string): string {
+  const trimmed = raw.trim().replace(/\/$/, "");
   try {
-    host = new URL(raw).hostname;
-  } catch {
+    
+    const u = new URL(trimmed);
+    if (u.protocol !== "https:" && u.protocol !== "http:") {
+      throw new Error("URL must start with https:// or http://");
+    }
+    if (!u.hostname) throw new Error("Missing hostname");
+  } catch (e) {
+    const hint = e instanceof Error ? e.message : "Invalid URL";
     throw new Error(
-      "VITE_SUPABASE_URL must be a full URL (e.g. https://abcd1234.supabase.co).",
+      `VITE_SUPABASE_URL is invalid (${hint}). Use the full Project URL from Supabase → Settings → API (one line in .env).`,
     );
   }
-  if (!/^[a-z0-9-]+\.supabase\.co$/i.test(host)) {
-    throw new Error(
-      `VITE_SUPABASE_URL has host "${host}" but it must be "<project-ref>.supabase.co" (see Supabase → Settings → API). A broken or wrapped line in .env often causes "Failed to fetch".`,
-    );
+  return trimmed;
+}
+
+/**
+ * Base URL for Supabase REST and GoTrue.
+ * In development, requests go to `/supabase/...` and Vite proxies to `VITE_SUPABASE_URL`
+ * so the browser stays same-origin (avoids many CORS / WSL / DNS "Failed to fetch" issues).
+ */
+export function getSupabaseUrl(): string {
+  const raw = requireEnv("VITE_SUPABASE_URL");
+  parseProjectUrl(raw);
+
+  if (import.meta.env.DEV) {
+    return "/supabase";
   }
-  return raw;
+
+  return raw.trim().replace(/\/$/, "");
 }
 
 export function getSupabaseAnonKey(): string {
