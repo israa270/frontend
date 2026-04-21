@@ -19,6 +19,20 @@ export type ProjectEpicItem = {
   assignee: EpicUser | null;
 };
 
+export type FetchProjectEpicsParams = {
+  accessToken: string;
+  projectId: string;
+  limit: number;
+  offset: number;
+};
+
+export type FetchProjectEpicsResult = {
+  epics: ProjectEpicItem[];
+  totalCount: number;
+  rangeStart: number | null;
+  rangeEnd: number | null;
+};
+
 function normalizeUser(input: unknown): EpicUser | null {
   if (!input || typeof input !== "object") return null;
   const obj = input as Record<string, unknown>;
@@ -54,16 +68,48 @@ function normalizeEpic(row: unknown): ProjectEpicItem | null {
   };
 }
 
+function parseContentRangeHeader(headerValue: string | null): {
+  totalCount: number;
+  rangeStart: number | null;
+  rangeEnd: number | null;
+} {
+  if (!headerValue) {
+    return { totalCount: 0, rangeStart: null, rangeEnd: null };
+  }
+  const [rangePart, totalPart] = headerValue.trim().split("/");
+  const totalCount = Number.parseInt(totalPart ?? "0", 10);
+  const total = Number.isFinite(totalCount) && totalCount >= 0 ? totalCount : 0;
+  if (!rangePart || rangePart === "*") {
+    return { totalCount: total, rangeStart: null, rangeEnd: null };
+  }
+  const [startRaw, endRaw] = rangePart.split("-");
+  const start = Number.parseInt(startRaw ?? "", 10);
+  const end = Number.parseInt(endRaw ?? "", 10);
+  return {
+    totalCount: total,
+    rangeStart: Number.isFinite(start) && start >= 0 ? start : null,
+    rangeEnd: Number.isFinite(end) && end >= 0 ? end : null,
+  };
+}
+
 export async function fetchProjectEpics(
-  accessToken: string,
-  projectId: string,
-): Promise<ProjectEpicItem[]> {
+  params: FetchProjectEpicsParams,
+): Promise<FetchProjectEpicsResult> {
+  const { accessToken, projectId, limit, offset } = params;
+  const safeLimit = Math.max(1, Math.floor(limit));
+  const safeOffset = Math.max(0, Math.floor(offset));
   const encodedProjectId = encodeURIComponent(projectId);
-  const url = `${getSupabaseUrl()}/rest/v1/project_epics?project_id=eq.${encodedProjectId}`;
+  const query = new URLSearchParams({
+    project_id: `eq.${encodedProjectId}`,
+    limit: String(safeLimit),
+    offset: String(safeOffset),
+  });
+  const url = `${getSupabaseUrl()}/rest/v1/project_epics?${query.toString()}`;
   const response = await fetch(url, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
+      Prefer: "count=exact",
       ...supabaseUserHeaders(accessToken),
     },
   });
@@ -79,7 +125,11 @@ export async function fetchProjectEpics(
   if (!Array.isArray(data)) {
     throw new HttpError("Invalid project epics response.", response.status);
   }
-  return data
+  const epics = data
     .map(normalizeEpic)
     .filter((row): row is ProjectEpicItem => row !== null);
+  const { totalCount, rangeStart, rangeEnd } = parseContentRangeHeader(
+    response.headers.get("content-range"),
+  );
+  return { epics, totalCount, rangeStart, rangeEnd };
 }

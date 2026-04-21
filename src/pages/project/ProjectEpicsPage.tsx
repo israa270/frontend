@@ -5,6 +5,23 @@ import { fetchProjectById } from "../../api/fetchProjectById";
 import { HttpError } from "../../api/httpError";
 import { useAuthSession } from "../../hooks/useAuthSession";
 
+const PAGE_SIZE = 10;
+const MOBILE_QUERY = "(max-width: 767px)";
+
+function useIsMobileView(): boolean {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia(MOBILE_QUERY).matches : false,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_QUERY);
+    const onChange = () => setIsMobile(mq.matches);
+    onChange();
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  return isMobile;
+}
+
 function initialsFromName(name: string | undefined): string {
   if (!name) return "U";
   const parts = name
@@ -69,9 +86,7 @@ function EpicsErrorState({ onRetry }: { onRetry: () => void }) {
         error_outline
       </span>
       <h2 className="text-title-md text-slate-dark">Something went wrong</h2>
-      <p className="mt-2 max-w-md text-body-md text-slate-medium">
-        Failed to load project epics. Please try again.
-      </p>
+      <p className="mt-2 max-w-md text-body-md text-slate-medium">Failed to load epics</p>
       <button
         type="button"
         onClick={onRetry}
@@ -102,7 +117,7 @@ function EpicsEmptyState({ createTo }: { createTo: string }) {
           </div>
         </div>
       </div>
-      <h2 className="text-headline-md text-slate-dark">No epics in this project yet.</h2>
+      <h2 className="text-headline-md text-slate-dark">No epics found for this project</h2>
       <p className="mt-3 max-w-xl text-body-md text-slate-medium">
         Break down your large project into manageable epics to track progress better.
       </p>
@@ -123,46 +138,103 @@ export function ProjectEpicsPage() {
   const navigate = useNavigate();
   const { projectId } = useParams();
   const { getAccessToken, signOut } = useAuthSession();
+  const isMobile = useIsMobileView();
+  const selectedProjectId = projectId ?? "";
   const [projectName, setProjectName] = useState("Project");
   const [epics, setEpics] = useState<ProjectEpicItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [pageRange, setPageRange] = useState<{ start: number; end: number } | null>(
+    null,
+  );
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   const loadEpics = useCallback(async () => {
-    if (!projectId) {
-      setLoadError("Failed to load project epics. Please try again.");
+    if (!selectedProjectId) {
+      setLoadError("Failed to load epics");
       setLoading(false);
       return;
     }
-    setLoading(true);
+    if (isMobile && currentPage > 1) setLoadingMore(true);
+    else setLoading(true);
     setLoadError(null);
     try {
       const token = await getAccessToken();
       if (!token) throw new HttpError("Unauthorized", 401);
+      const offset = (currentPage - 1) * PAGE_SIZE;
       const [project, rows] = await Promise.all([
-        fetchProjectById(token, projectId),
-        fetchProjectEpics(token, projectId),
+        fetchProjectById(token, selectedProjectId),
+        fetchProjectEpics({
+          accessToken: token,
+          projectId: selectedProjectId,
+          limit: PAGE_SIZE,
+          offset,
+        }),
       ]);
       setProjectName(project.name);
-      setEpics(rows);
+      setTotalCount(rows.totalCount);
+      setPageRange(
+        rows.rangeStart != null && rows.rangeEnd != null
+          ? { start: rows.rangeStart, end: rows.rangeEnd }
+          : null,
+      );
+      setEpics((prev) => {
+        if (isMobile && currentPage > 1) {
+          return [...prev, ...rows.epics];
+        }
+        return rows.epics;
+      });
     } catch (error) {
       if (error instanceof HttpError && error.status === 401) {
         signOut();
         navigate("/login", { replace: true });
         return;
       }
-      setLoadError("Failed to load project epics. Please try again.");
+      setLoadError("Failed to load epics");
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
-  }, [projectId, getAccessToken, signOut, navigate]);
+  }, [selectedProjectId, isMobile, currentPage, getAccessToken, signOut, navigate]);
 
   useEffect(() => {
     void loadEpics();
   }, [loadEpics]);
 
-  const filteredEpics = useMemo(() => {
+  useEffect(() => {
+    setCurrentPage(1);
+    setEpics([]);
+    setTotalCount(0);
+    setPageRange(null);
+  }, [selectedProjectId]);
+
+  useEffect(() => {
+    if (isMobile) setCurrentPage(1);
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (!isMobile || loading || loadingMore || !!loadError) return;
+    if (epics.length >= totalCount || currentPage >= totalPages) return;
+    const onScroll = () => {
+      const threshold = 120;
+      const bottomGap =
+        document.documentElement.scrollHeight - window.innerHeight - window.scrollY;
+      if (bottomGap <= threshold) {
+        setCurrentPage((p) => (p < totalPages ? p + 1 : p));
+      }
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [isMobile, loading, loadingMore, loadError, epics.length, totalCount, currentPage, totalPages]);
+
+  const createTo = selectedProjectId
+    ? `/project/${encodeURIComponent(selectedProjectId)}/epics/new`
+    : "/project";
+  const visibleEpics = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return epics;
     return epics.filter((epic) => {
@@ -174,10 +246,22 @@ export function ProjectEpicsPage() {
       );
     });
   }, [epics, search]);
-
-  const createTo = projectId
-    ? `/project/${encodeURIComponent(projectId)}/epics/new`
-    : "/project";
+  const shownCount = epics.length;
+  const rangeStart = pageRange?.start != null ? pageRange.start + 1 : shownCount > 0 ? 1 : 0;
+  const rangeEnd = pageRange?.end != null ? pageRange.end + 1 : shownCount;
+  const canGoPrev = currentPage > 1;
+  const canGoNext = currentPage < totalPages;
+  const pageNumbers = useMemo(
+    () => Array.from({ length: totalPages }, (_, i) => i + 1),
+    [totalPages],
+  );
+  const handleSelectPage = useCallback(
+    (page: number) => {
+      const next = Math.min(Math.max(1, page), totalPages);
+      if (next !== currentPage) setCurrentPage(next);
+    },
+    [totalPages, currentPage],
+  );
 
   return (
     <div className="mx-auto w-full max-w-6xl">
@@ -235,12 +319,12 @@ export function ProjectEpicsPage() {
         <EpicsLoadingGrid />
       ) : loadError ? (
         <EpicsErrorState onRetry={() => void loadEpics()} />
-      ) : filteredEpics.length === 0 ? (
+      ) : visibleEpics.length === 0 ? (
         <EpicsEmptyState createTo={createTo} />
       ) : (
         <>
           <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
-            {filteredEpics.map((epic) => {
+            {visibleEpics.map((epic) => {
               const done = isDone(epic);
               return (
                 <article
@@ -307,43 +391,58 @@ export function ProjectEpicsPage() {
 
           <footer className="mt-8 flex flex-col gap-4 border-t border-surface-highest pt-6 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-slate-medium">
-              Showing <span className="font-semibold text-slate-dark">{filteredEpics.length}</span>{" "}
-              of <span className="font-semibold text-slate-dark">{epics.length}</span> epics
+              Showing{" "}
+              <span className="font-semibold text-slate-dark">
+                {rangeStart}-{rangeEnd}
+              </span>{" "}
+              of <span className="font-semibold text-slate-dark">{totalCount}</span> epics
             </p>
-            <nav className="flex items-center gap-1" aria-label="Pagination">
-              <button
-                type="button"
-                disabled
-                className="flex size-9 items-center justify-center rounded-lg border border-surface-highest bg-white text-slate-medium disabled:cursor-not-allowed disabled:opacity-50"
-                aria-label="Previous page"
-              >
-                <span className="icon-material text-xl" aria-hidden>
-                  chevron_left
-                </span>
-              </button>
-              <button
-                type="button"
-                className="flex size-9 items-center justify-center rounded-lg bg-primary-container text-sm font-semibold text-on-primary-container"
-                aria-current="page"
-              >
-                1
-              </button>
-              <button
-                type="button"
-                className="flex size-9 items-center justify-center rounded-lg border border-surface-highest bg-white text-sm font-medium text-slate-dark"
-              >
-                2
-              </button>
-              <button
-                type="button"
-                className="flex size-9 items-center justify-center rounded-lg border border-surface-highest bg-white text-slate-medium"
-                aria-label="Next page"
-              >
-                <span className="icon-material text-xl" aria-hidden>
-                  chevron_right
-                </span>
-              </button>
-            </nav>
+            {isMobile ? (
+              <p className="text-sm text-slate-medium">
+                {loadingMore ? "Loading more..." : "Scroll for more"}
+              </p>
+            ) : (
+              <nav className="flex items-center gap-1" aria-label="Pagination">
+                <button
+                  type="button"
+                  disabled={!canGoPrev || loading}
+                  onClick={() => handleSelectPage(currentPage - 1)}
+                  className="flex size-9 items-center justify-center rounded-lg border border-surface-highest bg-white text-slate-medium disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Previous page"
+                >
+                  <span className="icon-material text-xl" aria-hidden>
+                    chevron_left
+                  </span>
+                </button>
+                {pageNumbers.map((page) => (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() => handleSelectPage(page)}
+                    disabled={loading}
+                    className={
+                      page === currentPage
+                        ? "flex size-9 items-center justify-center rounded-lg bg-primary-container text-sm font-semibold text-on-primary-container"
+                        : "flex size-9 items-center justify-center rounded-lg border border-surface-highest bg-white text-sm font-medium text-slate-dark"
+                    }
+                    aria-current={page === currentPage ? "page" : undefined}
+                  >
+                    {page}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  disabled={!canGoNext || loading}
+                  onClick={() => handleSelectPage(currentPage + 1)}
+                  className="flex size-9 items-center justify-center rounded-lg border border-surface-highest bg-white text-slate-medium disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Next page"
+                >
+                  <span className="icon-material text-xl" aria-hidden>
+                    chevron_right
+                  </span>
+                </button>
+              </nav>
+            )}
           </footer>
         </>
       )}
