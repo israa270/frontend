@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { fetchProjects, type ProjectListItem } from "../../api/fetchProjects";
 import { HttpError } from "../../api/httpError";
@@ -6,30 +6,59 @@ import { useAuthSession } from "../../hooks/useAuthSession";
 import { formatProjectDate } from "../../lib/formatProjectDate";
 
 const SKELETON_COUNT = 6;
+const PAGE_SIZE = 10;
+const MOBILE_QUERY = "(max-width: 767px)";
 
 type ProjectsLoadResult =
-  | { status: "ok"; list: ProjectListItem[] }
+  | {
+      status: "ok";
+      list: ProjectListItem[];
+      totalCount: number;
+      rangeStart: number | null;
+      rangeEnd: number | null;
+    }
   | { status: "unauthorized" }
   | { status: "error"; message: string };
 
+function useIsMobileView(): boolean {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia(MOBILE_QUERY).matches : false,
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_QUERY);
+    const onChange = () => setIsMobile(mq.matches);
+    onChange();
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  return isMobile;
+}
+
 async function performProjectsLoad(
   getAccessToken: () => Promise<string | null>,
+  page: number,
+  limit: number,
 ): Promise<ProjectsLoadResult> {
   try {
     const token = await getAccessToken();
     if (!token) return { status: "unauthorized" };
-    const list = await fetchProjects(token);
-    return { status: "ok", list };
+    const safePage = Math.max(1, page);
+    const offset = (safePage - 1) * limit;
+    const { projects, totalCount, rangeStart, rangeEnd } = await fetchProjects({
+      accessToken: token,
+      limit,
+      offset,
+    });
+    return { status: "ok", list: projects, totalCount, rangeStart, rangeEnd };
   } catch (e) {
     if (e instanceof HttpError && e.status === 401) {
       return { status: "unauthorized" };
     }
     return {
       status: "error",
-      message:
-        e instanceof Error
-          ? e.message
-          : "Could not load projects. Please try again.",
+      message: e instanceof Error ? e.message : "Failed to load projects",
     };
   }
 }
@@ -126,12 +155,21 @@ export function ProjectsListPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { getAccessToken, signOut } = useAuthSession();
+  const isMobile = useIsMobileView();
   const [projects, setProjects] = useState<ProjectListItem[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [pageRange, setPageRange] = useState<{ start: number; end: number } | null>(
+    null,
+  );
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   const applyLoadResult = useCallback(
-    (result: ProjectsLoadResult) => {
+    (result: ProjectsLoadResult, page: number) => {
       if (result.status === "unauthorized") {
         signOut();
         navigate("/login", {
@@ -141,37 +179,109 @@ export function ProjectsListPage() {
         return;
       }
       if (result.status === "error") {
-        setLoadError(result.message);
+        setLoadError("Failed to load projects");
         setProjects(null);
         return;
       }
-      setProjects(result.list);
+      setLoadError(null);
+      setTotalCount(result.totalCount);
+      setPageRange(
+        result.rangeStart != null && result.rangeEnd != null
+          ? { start: result.rangeStart, end: result.rangeEnd }
+          : null,
+      );
+      setProjects((prev) => {
+        if (isMobile && page > 1) {
+          return [...(prev ?? []), ...result.list];
+        }
+        return result.list;
+      });
     },
-    [signOut, navigate, location.pathname],
+    [signOut, navigate, location.pathname, isMobile],
   );
+
+  const loadPage = useCallback(
+    async (page: number) => {
+      setLoading(true);
+      const result = await performProjectsLoad(getAccessToken, page, PAGE_SIZE);
+      applyLoadResult(result, page);
+      setLoading(false);
+    },
+    [getAccessToken, applyLoadResult],
+  );
+
+  useEffect(() => {
+    if (isMobile) {
+      setCurrentPage(1);
+    }
+  }, [isMobile]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const result = await performProjectsLoad(getAccessToken);
+      if (isMobile && currentPage > 1) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+      }
+      const result = await performProjectsLoad(getAccessToken, currentPage, PAGE_SIZE);
       if (cancelled) return;
-      applyLoadResult(result);
-      if (!cancelled) setLoading(false);
+      applyLoadResult(result, currentPage);
+      if (!cancelled) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     })();
     return () => {
       cancelled = true;
     };
-  }, [getAccessToken, applyLoadResult]);
+  }, [getAccessToken, applyLoadResult, currentPage, isMobile]);
 
   const handleRetry = useCallback(() => {
-    void (async () => {
-      setLoading(true);
-      setLoadError(null);
-      const result = await performProjectsLoad(getAccessToken);
-      applyLoadResult(result);
-      setLoading(false);
-    })();
-  }, [getAccessToken, applyLoadResult]);
+    setLoadError(null);
+    if (isMobile) {
+      if (currentPage !== 1) {
+        setCurrentPage(1);
+        return;
+      }
+      void loadPage(1);
+      return;
+    }
+    void loadPage(currentPage);
+  }, [currentPage, isMobile, loadPage]);
+
+  useEffect(() => {
+    if (!isMobile || loading || loadingMore || !!loadError) return;
+    if ((projects?.length ?? 0) >= totalCount) return;
+    const onScroll = () => {
+      const threshold = 100;
+      const bottomGap =
+        document.documentElement.scrollHeight - window.innerHeight - window.scrollY;
+      if (bottomGap <= threshold) {
+        setCurrentPage((p) => p + 1);
+      }
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [isMobile, loading, loadingMore, loadError, projects, totalCount]);
+
+  const handleSelectPage = useCallback(
+    (page: number) => {
+      const next = Math.min(Math.max(1, page), totalPages);
+      if (next !== currentPage) setCurrentPage(next);
+    },
+    [totalPages, currentPage],
+  );
+
+  const pageNumbers = useMemo(() => {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }, [totalPages]);
+
+  const shownCount = projects?.length ?? 0;
+  const rangeStart = pageRange?.start != null ? pageRange.start + 1 : shownCount > 0 ? 1 : 0;
+  const rangeEnd = pageRange?.end != null ? pageRange.end + 1 : shownCount;
+  const canGoPrev = currentPage > 1;
+  const canGoNext = currentPage < totalPages;
 
   return (
     <div className="mx-auto w-full max-w-6xl">
@@ -194,7 +304,7 @@ export function ProjectsListPage() {
       </header>
 
       <div className="mt-8">
-        {loading ? (
+        {loading && (projects?.length ?? 0) === 0 ? (
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: SKELETON_COUNT }, (_, i) => (
               <ProjectCardSkeleton key={i} />
@@ -210,9 +320,7 @@ export function ProjectsListPage() {
             >
               folder_open
             </span>
-            <p className="max-w-md text-body-md text-slate-medium">
-              You don&apos;t have any projects yet.
-            </p>
+            <p className="max-w-md text-body-md text-slate-medium">No projects found</p>
             <Link
               to="/project/add"
               className="mt-6 inline-flex items-center justify-center gap-2 rounded-lg bg-primary-container px-5 py-2.5 text-sm font-semibold text-on-primary-container shadow-soft hover:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
@@ -236,54 +344,64 @@ export function ProjectsListPage() {
               <p className="text-sm text-slate-medium">
                 Showing{" "}
                 <span className="font-semibold text-slate-dark">
-                  {projects?.length ?? 0}
+                  {rangeStart}-{rangeEnd}
                 </span>{" "}
                 of{" "}
                 <span className="font-semibold text-slate-dark">
-                  {projects?.length ?? 0}
+                  {totalCount}
                 </span>{" "}
                 active projects
               </p>
-              <nav
-                className="flex items-center justify-center gap-1 sm:justify-end"
-                aria-label="Pagination"
-              >
-                <button
-                  type="button"
-                  className="flex size-9 items-center justify-center rounded-lg border border-surface-highest bg-white text-slate-medium"
-                  aria-label="Previous page"
-                  disabled
+              {isMobile ? (
+                <div className="text-sm text-slate-medium">
+                  {loadingMore ? "Loading more..." : "Scroll for more"}
+                </div>
+              ) : (
+                <nav
+                  className="flex items-center justify-center gap-1 sm:justify-end"
+                  aria-label="Pagination"
                 >
-                  <span className="icon-material text-xl" aria-hidden>
-                    chevron_left
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className="flex size-9 items-center justify-center rounded-lg bg-primary-container text-sm font-semibold text-on-primary-container"
-                  aria-current="page"
-                  aria-label="Page 1"
-                >
-                  1
-                </button>
-                <button
-                  type="button"
-                  className="flex size-9 items-center justify-center rounded-lg border border-surface-highest bg-white text-sm font-medium text-slate-dark"
-                  aria-label="Page 2"
-                >
-                  2
-                </button>
-                <button
-                  type="button"
-                  className="flex size-9 items-center justify-center rounded-lg border border-surface-highest bg-white text-slate-medium"
-                  aria-label="Next page"
-                  disabled
-                >
-                  <span className="icon-material text-xl" aria-hidden>
-                    chevron_right
-                  </span>
-                </button>
-              </nav>
+                  <button
+                    type="button"
+                    className="flex size-9 items-center justify-center rounded-lg border border-surface-highest bg-white text-slate-medium disabled:cursor-not-allowed disabled:opacity-50"
+                    aria-label="Previous page"
+                    disabled={!canGoPrev || loading}
+                    onClick={() => handleSelectPage(currentPage - 1)}
+                  >
+                    <span className="icon-material text-xl" aria-hidden>
+                      chevron_left
+                    </span>
+                  </button>
+                  {pageNumbers.map((page) => (
+                    <button
+                      key={page}
+                      type="button"
+                      className={
+                        page === currentPage
+                          ? "flex size-9 items-center justify-center rounded-lg bg-primary-container text-sm font-semibold text-on-primary-container"
+                          : "flex size-9 items-center justify-center rounded-lg border border-surface-highest bg-white text-sm font-medium text-slate-dark"
+                      }
+                      aria-current={page === currentPage ? "page" : undefined}
+                      aria-label={`Page ${page}`}
+                      onClick={() => handleSelectPage(page)}
+                      disabled={loading}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className="flex size-9 items-center justify-center rounded-lg border border-surface-highest bg-white text-slate-medium disabled:cursor-not-allowed disabled:opacity-50"
+                    aria-label="Next page"
+                    disabled={!canGoNext || loading}
+                    onClick={() => handleSelectPage(currentPage + 1)}
+                  >
+                    <span className="icon-material text-xl" aria-hidden>
+                      chevron_right
+                    </span>
+                  </button>
+                </nav>
+              )}
             </footer>
           </>
         )}
