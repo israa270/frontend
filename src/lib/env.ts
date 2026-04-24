@@ -45,3 +45,25 @@ export function getSupabaseUrl(): string {
 export function getSupabaseAnonKey(): string {
   return requireEnv("VITE_SUPABASE_ANON_KEY");
 }
+
+export function getAuthEmailRedirectTo(): string {
+  const raw = import.meta.env.VITE_AUTH_REDIRECT_URL;
+  if (typeof raw === "string" && raw.trim().length > 0) {
+    try {
+      const url = new URL(raw.trim());
+      return url.toString().replace(/\/$/, "");
+    } catch {
+      throw new Error(
+        "VITE_AUTH_REDIRECT_URL is invalid. Use a full URL like https://your-app.vercel.app.",
+      );
+    }
+  }
+
+  if (typeof window !== "undefined" && window.location?.origin) {
+    return window.location.origin;
+  }
+
+  throw new Error(
+    "Unable to resolve auth redirect URL. Set VITE_AUTH_REDIRECT_URL in your environment.",
+  );
+}
