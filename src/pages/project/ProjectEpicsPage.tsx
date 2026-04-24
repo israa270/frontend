@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   fetchProjectEpicDetails,
   fetchProjectEpics,
@@ -11,6 +11,28 @@ import { useAuthSession } from "../../hooks/useAuthSession";
 
 const PAGE_SIZE = 10;
 const MOBILE_QUERY = "(max-width: 767px)";
+
+type EpicStatusFilter = "all" | "todo" | "done";
+
+/** Client-side order for the current page of epics: `asc` = soonest deadline first, `desc` = latest first, `none` = API order. */
+type EpicDeadlineOrder = "none" | "asc" | "desc";
+
+function statusFromParam(value: string | null): EpicStatusFilter {
+  if (value === "todo" || value === "done") return value;
+  return "all";
+}
+
+function deadlineOrderFromParam(value: string | null): EpicDeadlineOrder {
+  if (value === "asc" || value === "desc") return value;
+  return "none";
+}
+
+function pageFromParam(value: string | null): number {
+  if (!value) return 1;
+  const n = Number.parseInt(value, 10);
+  if (!Number.isFinite(n) || n < 1) return 1;
+  return n;
+}
 
 function useIsMobileView(): boolean {
   const [isMobile, setIsMobile] = useState(() =>
@@ -62,6 +84,21 @@ function formatModalDate(value: string | null): string {
 function isDone(epic: ProjectEpicItem): boolean {
   const text = `${epic.title} ${epic.description}`.toLowerCase();
   return text.includes("done");
+}
+
+function deadlineTime(iso: string | null): number | null {
+  if (!iso) return null;
+  const t = new Date(iso).getTime();
+  return Number.isFinite(t) ? t : null;
+}
+
+function compareEpicDeadline(a: ProjectEpicItem, b: ProjectEpicItem, order: "asc" | "desc"): number {
+  const ta = deadlineTime(a.deadline);
+  const tb = deadlineTime(b.deadline);
+  if (ta == null && tb == null) return 0;
+  if (ta == null) return 1;
+  if (tb == null) return -1;
+  return order === "asc" ? ta - tb : tb - ta;
 }
 
 function EpicsLoadingGrid() {
@@ -145,6 +182,24 @@ function EpicsEmptyState({ createTo }: { createTo: string }) {
         </span>
         Create First Epic
       </Link>
+    </div>
+  );
+}
+
+function EpicsNoResultsState({ onReset }: { onReset: () => void }) {
+  return (
+    <div className="mt-10 rounded-2xl border border-surface-highest bg-white px-6 py-12 text-center shadow-soft">
+      <h2 className="text-title-md text-slate-dark">No epics match your current filters.</h2>
+      <p className="mt-2 text-body-md text-slate-medium">
+        Try changing status or search terms.
+      </p>
+      <button
+        type="button"
+        onClick={onReset}
+        className="mt-5 rounded-lg bg-primary-container px-5 py-2.5 text-sm font-semibold text-on-primary-container shadow-soft hover:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      >
+        Reset filters
+      </button>
     </div>
   );
 }
@@ -298,6 +353,7 @@ function EpicDetailsModal({
 export function ProjectEpicsPage() {
   const navigate = useNavigate();
   const { projectId } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { getAccessToken, signOut } = useAuthSession();
   const isMobile = useIsMobileView();
   const selectedProjectId = projectId ?? "";
@@ -306,17 +362,64 @@ export function ProjectEpicsPage() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [search, setSearch] = useState(
+    () => searchParams.get("q") ?? "",
+  );
+  const [statusFilter, setStatusFilter] = useState<EpicStatusFilter>(
+    () => statusFromParam(searchParams.get("status")),
+  );
+  const [currentPage, setCurrentPage] = useState(() =>
+    isMobile ? 1 : pageFromParam(searchParams.get("page")),
+  );
+  const [deadlineOrder, setDeadlineOrder] = useState<EpicDeadlineOrder>(
+    () => deadlineOrderFromParam(searchParams.get("deadline")),
+  );
   const [totalCount, setTotalCount] = useState(0);
   const [pageRange, setPageRange] = useState<{ start: number; end: number } | null>(
     null,
   );
-  const [selectedEpicId, setSelectedEpicId] = useState<string | null>(null);
   const [selectedEpic, setSelectedEpic] = useState<ProjectEpicItem | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
+  const selectedEpicId = searchParams.get("epic");
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+
+  useEffect(() => {
+    setCurrentPage((p) => Math.min(p, totalPages));
+  }, [totalPages]);
+
+  // Keep list filters in sync with the URL (e.g. back/forward) without listing local state
+  // in the dependency array (that would fight in-progress typing).
+  useEffect(() => {
+    const q = searchParams.get("q") ?? "";
+    const nextStatus = statusFromParam(searchParams.get("status"));
+    const nextPage = pageFromParam(searchParams.get("page"));
+    const nextDeadline = deadlineOrderFromParam(searchParams.get("deadline"));
+    setSearch((prev) => (prev === q ? prev : q));
+    setStatusFilter((prev) => (prev === nextStatus ? prev : nextStatus));
+    setDeadlineOrder((prev) => (prev === nextDeadline ? prev : nextDeadline));
+    if (!isMobile) {
+      setCurrentPage((prev) => (prev === nextPage ? prev : nextPage));
+    }
+  }, [searchParams, isMobile]);
+
+  useEffect(() => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (search.trim()) next.set("q", search.trim());
+        else next.delete("q");
+        if (statusFilter !== "all") next.set("status", statusFilter);
+        else next.delete("status");
+        if (!isMobile && currentPage > 1) next.set("page", String(currentPage));
+        else next.delete("page");
+        if (deadlineOrder !== "none") next.set("deadline", deadlineOrder);
+        else next.delete("deadline");
+        return next;
+      },
+      { replace: true },
+    );
+  }, [search, statusFilter, currentPage, isMobile, deadlineOrder, setSearchParams]);
 
   const loadEpics = useCallback(async () => {
     if (!selectedProjectId) {
@@ -382,10 +485,23 @@ export function ProjectEpicsPage() {
   }, [isMobile]);
 
   useEffect(() => {
-    setSelectedEpicId(null);
+    setCurrentPage(1);
+  }, [statusFilter]);
+
+  useEffect(() => {
+    setSearchParams(
+      (prev) => {
+        if (!prev.has("epic")) return prev;
+        const next = new URLSearchParams(prev);
+        next.delete("epic");
+        return next;
+      },
+      { replace: true },
+    );
     setSelectedEpic(null);
     setModalError(null);
-  }, [selectedProjectId]);
+    setModalLoading(false);
+  }, [selectedProjectId, setSearchParams]);
 
   useEffect(() => {
     if (!isMobile || loading || loadingMore || !!loadError) return;
@@ -405,10 +521,15 @@ export function ProjectEpicsPage() {
   const createTo = selectedProjectId
     ? `/project/${encodeURIComponent(selectedProjectId)}/epics/new`
     : "/project";
+  const statusOptions: Array<{ id: EpicStatusFilter; label: string }> = [
+    { id: "all", label: "All" },
+    { id: "todo", label: "To Do" },
+    { id: "done", label: "Done" },
+  ];
   const visibleEpics = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return epics;
-    return epics.filter((epic) => {
+    const searchFiltered = epics.filter((epic) => {
+      if (!q) return true;
       return (
         epic.epicId.toLowerCase().includes(q) ||
         epic.title.toLowerCase().includes(q) ||
@@ -416,7 +537,21 @@ export function ProjectEpicsPage() {
         epic.createdBy?.name.toLowerCase().includes(q)
       );
     });
-  }, [epics, search]);
+    const statusFiltered = searchFiltered.filter((epic) => {
+      if (statusFilter === "all") return true;
+      const done = isDone(epic);
+      return (
+        statusFilter === "done"
+          ? done
+          : !done
+      );
+    });
+    if (deadlineOrder === "none") return statusFiltered;
+    const ordered = [...statusFiltered].sort((a, b) =>
+      compareEpicDeadline(a, b, deadlineOrder),
+    );
+    return ordered;
+  }, [epics, search, statusFilter, deadlineOrder]);
   const shownCount = epics.length;
   const rangeStart = pageRange?.start != null ? pageRange.start + 1 : shownCount > 0 ? 1 : 0;
   const rangeEnd = pageRange?.end != null ? pageRange.end + 1 : shownCount;
@@ -429,9 +564,23 @@ export function ProjectEpicsPage() {
   const handleSelectPage = useCallback(
     (page: number) => {
       const next = Math.min(Math.max(1, page), totalPages);
-      if (next !== currentPage) setCurrentPage(next);
+      if (next === currentPage) return;
+      setCurrentPage(next);
+      // Leaving a deep-linked modal open while changing pages is confusing; back/forward still restores `epic`.
+      setSearchParams(
+        (prev) => {
+          if (!prev.has("epic")) return prev;
+          const merged = new URLSearchParams(prev);
+          merged.delete("epic");
+          return merged;
+        },
+        { replace: true },
+      );
+      setSelectedEpic(null);
+      setModalError(null);
+      setModalLoading(false);
     },
-    [totalPages, currentPage],
+    [totalPages, currentPage, setSearchParams],
   );
 
   useEffect(() => {
@@ -463,16 +612,40 @@ export function ProjectEpicsPage() {
     };
   }, [selectedEpicId, selectedProjectId, getAccessToken, signOut, navigate]);
 
-  const openEpicModal = useCallback((epicId: string) => {
-    setSelectedEpicId(epicId);
-    setSelectedEpic(null);
-    setModalError(null);
-  }, []);
+  const openEpicModal = useCallback(
+    (epicId: string) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set("epic", epicId);
+          return next;
+        },
+        { replace: true },
+      );
+      setSelectedEpic(null);
+      setModalError(null);
+    },
+    [setSearchParams],
+  );
   const closeEpicModal = useCallback(() => {
-    setSelectedEpicId(null);
+    setSearchParams(
+      (prev) => {
+        if (!prev.has("epic")) return prev;
+        const next = new URLSearchParams(prev);
+        next.delete("epic");
+        return next;
+      },
+      { replace: true },
+    );
     setSelectedEpic(null);
     setModalError(null);
     setModalLoading(false);
+  }, [setSearchParams]);
+  const handleResetFilters = useCallback(() => {
+    setSearch("");
+    setStatusFilter("all");
+    setDeadlineOrder("none");
+    setCurrentPage(1);
   }, []);
 
   return (
@@ -526,13 +699,57 @@ export function ProjectEpicsPage() {
           </Link>
         </div>
       </div>
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="flex flex-wrap gap-2">
+          {statusOptions.map((opt) => {
+            const active = statusFilter === opt.id;
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setStatusFilter(opt.id)}
+                className={
+                  active
+                    ? "rounded-full bg-primary px-4 py-1.5 text-sm font-semibold text-on-primary"
+                    : "rounded-full border border-surface-highest bg-white px-4 py-1.5 text-sm font-medium text-slate-dark hover:bg-surface-low"
+                }
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex min-w-0 flex-col gap-1 sm:max-w-[280px] sm:flex-row sm:items-center sm:gap-2">
+          <label htmlFor="epic-deadline-sort" className="shrink-0 text-sm font-medium text-slate-dark">
+            Deadline
+          </label>
+          <select
+            id="epic-deadline-sort"
+            value={deadlineOrder}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "none" || v === "asc" || v === "desc") {
+                setDeadlineOrder(v);
+              }
+            }}
+            title="Reorders only the epics on this page. Pages still come from the server in API order."
+            className="min-w-0 flex-1 rounded-lg border border-surface-highest bg-white px-3 py-2 text-sm text-slate-dark shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+          >
+            <option value="none">Default order</option>
+            <option value="asc">Soonest first</option>
+            <option value="desc">Latest first</option>
+          </select>
+        </div>
+      </div>
 
       {loading ? (
         <EpicsLoadingGrid />
       ) : loadError ? (
         <EpicsErrorState onRetry={() => void loadEpics()} />
-      ) : visibleEpics.length === 0 ? (
+      ) : epics.length === 0 ? (
         <EpicsEmptyState createTo={createTo} />
+      ) : visibleEpics.length === 0 ? (
+        <EpicsNoResultsState onReset={handleResetFilters} />
       ) : (
         <>
           <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
