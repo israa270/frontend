@@ -1,6 +1,6 @@
 import type { StoredAuthUser } from "../lib/authCookies";
 import { persistAuthCookies } from "../lib/authCookies";
-import { getSupabaseUrl } from "../lib/env";
+import { getAuthEmailRedirectTo, getSupabaseUrl } from "../lib/env";
 import { supabaseAnonHeaders } from "../lib/supabaseHeaders";
 import { mapSupabaseNetworkError } from "./mapSupabaseNetworkError";
 import { getJwtSubject } from "../lib/jwt";
@@ -11,6 +11,9 @@ export type SignUpRequestBody = {
   data: {
     name: string;
     job_title?: string;
+  };
+  options?: {
+    emailRedirectTo?: string;
   };
 };
 
@@ -78,7 +81,15 @@ function userFromSignUpResponse(
 export async function signUpWithPassword(
   body: SignUpRequestBody,
 ): Promise<SignUpSuccess> {
-  const url = `${getSupabaseUrl()}/auth/v1/signup`;
+  const redirectTo = body.options?.emailRedirectTo ?? getAuthEmailRedirectTo();
+  const url = `${getSupabaseUrl()}/auth/v1/signup?redirect_to=${encodeURIComponent(redirectTo)}`;
+  const payload: SignUpRequestBody = {
+    ...body,
+    options: {
+      ...(body.options ?? {}),
+      emailRedirectTo: redirectTo,
+    },
+  };
   let response: Response;
   try {
     response = await fetch(url, {
@@ -87,7 +98,7 @@ export async function signUpWithPassword(
         "Content-Type": "application/json",
         ...supabaseAnonHeaders(),
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(payload),
     });
   } catch (e) {
     mapSupabaseNetworkError(e);
