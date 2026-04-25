@@ -5,6 +5,7 @@ import { AppShell } from "./components/layout/AppShell";
 import { ShellPlaceholderPage } from "./pages/dashboard/ShellPlaceholderPage";
 import { AddProjectPage } from "./pages/project/AddProjectPage";
 import { AddEpicPage } from "./pages/project/AddEpicPage";
+import { EditEpicPage } from "./pages/project/EditEpicPage";
 import { EditProjectPage } from "./pages/project/EditProjectPage";
 import { ProjectEpicsPage } from "./pages/project/ProjectEpicsPage";
 import { ProjectMembersPage } from "./pages/project/ProjectMembersPage";
@@ -61,6 +62,7 @@ export default function App() {
                 element={<ProjectEpicsPage />}
               />
               <Route path="epics/new" element={<AddEpicPage />} />
+              <Route path="epics/:epicId/edit" element={<EditEpicPage />} />
               <Route
                 path="tasks"
                 element={<ShellPlaceholderPage title="Project Tasks" />}

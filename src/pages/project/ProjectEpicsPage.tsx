@@ -209,11 +209,14 @@ function EpicDetailsModal({
   loading,
   error,
   onClose,
+  editTo,
 }: {
   epic: ProjectEpicItem | null;
   loading: boolean;
   error: string | null;
   onClose: () => void;
+  /** When set, shows an "Edit" control that opens the edit epic page. */
+  editTo: string | null;
 }) {
   if (!loading && !error && !epic) return null;
   return (
@@ -260,16 +263,30 @@ function EpicDetailsModal({
                 </span>
                 <h2 className="mt-3 text-headline-md text-slate-dark">{epic.title}</h2>
               </div>
-              <button
-                type="button"
-                onClick={onClose}
-                className="inline-flex size-9 items-center justify-center rounded-lg text-slate-medium hover:bg-surface-low"
-                aria-label="Close epic details"
-              >
-                <span className="icon-material text-xl" aria-hidden>
-                  close
-                </span>
-              </button>
+              <div className="flex shrink-0 items-center gap-1">
+                {editTo ? (
+                  <Link
+                    to={editTo}
+                    className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-semibold text-primary hover:bg-surface-low"
+                    onClick={onClose}
+                  >
+                    <span className="icon-material text-[18px]" aria-hidden>
+                      edit
+                    </span>
+                    Edit
+                  </Link>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="inline-flex size-9 items-center justify-center rounded-lg text-slate-medium hover:bg-surface-low"
+                  aria-label="Close epic details"
+                >
+                  <span className="icon-material text-xl" aria-hidden>
+                    close
+                  </span>
+                </button>
+              </div>
             </div>
             <p className="mt-5 text-body-md text-slate-medium">
               {epic.description.trim() || "No description provided"}
@@ -769,16 +786,17 @@ export function ProjectEpicsPage() {
                     <span className="rounded bg-emerald-100 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-800">
                       {epic.epicId}
                     </span>
-                    <button
-                      type="button"
-                      aria-label={`Actions for ${epic.title}`}
+                    <Link
+                      to={
+                        selectedProjectId
+                          ? `/project/${encodeURIComponent(selectedProjectId)}/epics/${encodeURIComponent(epic.id)}/edit`
+                          : "/project"
+                      }
                       onClick={(e) => e.stopPropagation()}
-                      className="inline-flex size-8 items-center justify-center rounded-lg text-slate-medium hover:bg-surface-low"
+                      className="text-sm font-semibold text-primary hover:underline"
                     >
-                      <span className="icon-material text-[18px]" aria-hidden>
-                        more_vert
-                      </span>
-                    </button>
+                      Edit
+                    </Link>
                   </div>
                   <h2 className="text-title-md text-slate-dark">{epic.title}</h2>
                   <div className="mt-4 flex items-center justify-between gap-3">
@@ -883,6 +901,11 @@ export function ProjectEpicsPage() {
           loading={modalLoading}
           error={modalError}
           onClose={closeEpicModal}
+          editTo={
+            selectedProjectId && selectedEpicId
+              ? `/project/${encodeURIComponent(selectedProjectId)}/epics/${encodeURIComponent(selectedEpicId)}/edit`
+              : null
+          }
         />
       ) : null}
     </div>

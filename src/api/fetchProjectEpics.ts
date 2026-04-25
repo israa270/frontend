@@ -17,6 +17,8 @@ export type ProjectEpicItem = {
   createdAt: string | null;
   createdBy: EpicUser | null;
   assignee: EpicUser | null;
+  /** Set when the API exposes `assignee_id` on the row (e.g. for edit forms). */
+  assigneeId: string | null;
 };
 
 export type FetchProjectEpicsParams = {
@@ -53,6 +55,7 @@ function normalizeEpic(row: unknown): ProjectEpicItem | null {
     return null;
   }
   const epicIdRaw = r.epic_id;
+  const assigneeIdRaw = r.assignee_id;
   return {
     id: String(idRaw),
     epicId:
@@ -65,6 +68,10 @@ function normalizeEpic(row: unknown): ProjectEpicItem | null {
     createdAt: typeof r.created_at === "string" ? r.created_at : null,
     createdBy: normalizeUser(r.created_by),
     assignee: normalizeUser(r.assignee),
+    assigneeId:
+      typeof assigneeIdRaw === "string" && assigneeIdRaw.trim()
+        ? assigneeIdRaw.trim()
+        : null,
   };
 }
 
